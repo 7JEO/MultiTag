@@ -11,8 +11,9 @@ from PyQt6.QtGui import QIcon, QPalette
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QCompleter, QDialog, QDialogButtonBox, QFormLayout, QFrame,
                              QHBoxLayout, QLineEdit, QListView, QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
-VERSION = "1.4.2"  # bump this whenever you publish a new multitag.py
+VERSION = "1.4.3"  # bump this whenever you publish a new multitag.py
 OLD_CFG = os.path.expanduser("~/.config/streamsync")  # pre-rename config, moved over once
+UPDATE_URL = "https://raw.githubusercontent.com/7JEO/MultiTag/refs/heads/main/multitag.py"  # default; Settings > Update Url overrides it
 CFG = os.path.expanduser("~/.config/multitag")
 if os.path.isdir(OLD_CFG) and not os.path.exists(CFG):
     shutil.move(OLD_CFG, CFG)
@@ -439,7 +440,7 @@ class Win(QWidget):
             s.title.setText(d["title"]); s.cat.setText(d["category"]); s.tags.setText(tags)
 
     def check(s):
-        url = load(CFG_F).get("update_url", "")
+        url = load(CFG_F).get("update_url") or UPDATE_URL
         if url:
             try:
                 src = fetch_update(url)
