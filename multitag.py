@@ -7,11 +7,11 @@ import base64, hashlib, json, os, re, secrets, shutil, sys, threading, time, url
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import requests
 from PyQt6.QtCore import QStringListModel, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import (QApplication, QCheckBox, QCompleter, QDialog, QDialogButtonBox, QFormLayout,
-                             QHBoxLayout, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
+from PyQt6.QtGui import QIcon, QPalette
+from PyQt6.QtWidgets import (QApplication, QCheckBox, QCompleter, QDialog, QDialogButtonBox, QFormLayout, QFrame,
+                             QHBoxLayout, QLineEdit, QListView, QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
-VERSION = "1.4.0"  # bump this whenever you publish a new multitag.py
+VERSION = "1.4.2"  # bump this whenever you publish a new multitag.py
 OLD_CFG = os.path.expanduser("~/.config/streamsync")  # pre-rename config, moved over once
 CFG = os.path.expanduser("~/.config/multitag")
 if os.path.isdir(OLD_CFG) and not os.path.exists(CFG):
@@ -19,6 +19,12 @@ if os.path.isdir(OLD_CFG) and not os.path.exists(CFG):
 os.makedirs(CFG, exist_ok=True)
 CFG_F, TOK_F, HIST_F = CFG + "/config.json", CFG + "/tokens.json", CFG + "/history.json"
 HLOCK = threading.Lock()
+# Autocomplete dropdown: own background + accent border so it stands out from the log view (uses theme colours)
+POPUP_CSS = """
+QListView { background: palette(window); border: 2px solid palette(highlight); padding: 2px; outline: 0; }
+QListView::item { padding: 4px 8px; }
+QListView::item:selected { background: palette(highlight); color: palette(highlighted-text); }
+"""
 PORT = 8976
 REDIRECT = f"http://localhost:{PORT}/callback"
 LOCK = threading.Lock()
@@ -277,6 +283,24 @@ FUNCS = {"twitch": twitch, "kick": kick, "youtube": youtube}
 
 
 # ---------- GUI ----------
+def style_popup(c):
+    """Replace the completer's dropdown with one that has a visible frame, in two independent ways
+    (a native QFrame border + the stylesheet), so at least one shows up whatever the desktop style does."""
+    lv = QListView()
+    lv.setEditTriggers(QListView.EditTrigger.NoEditTriggers)
+    lv.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    lv.setSelectionBehavior(QListView.SelectionBehavior.SelectRows)
+    lv.setSelectionMode(QListView.SelectionMode.SingleSelection)
+    c.setPopup(lv)
+    lv.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Plain)
+    lv.setLineWidth(2)
+    pal = lv.palette()
+    pal.setColor(QPalette.ColorRole.WindowText, pal.color(QPalette.ColorRole.Highlight))  # frame colour
+    pal.setColor(QPalette.ColorRole.Base, pal.color(QPalette.ColorRole.Window))
+    lv.setPalette(pal)
+    lv.setStyleSheet(POPUP_CSS)
+
+
 class TagCompleter(QCompleter):
     """Completes only the comma-separated item being typed."""
     def splitPath(self, path):
@@ -315,7 +339,7 @@ class Win(QWidget):
 
     def __init__(s):
         super().__init__()
-        s.setWindowTitle("MultiTag")
+        s.setWindowTitle(f"MultiTag {VERSION}")
         s.resize(520, 420)
         s.title, s.cat, s.tags = QLineEdit(), QLineEdit(), QLineEdit()
         s.tags.setPlaceholderText("comma, separated")
@@ -328,6 +352,8 @@ class Win(QWidget):
             c.setFilterMode(Qt.MatchFlag.MatchContains)
         s.cat.setCompleter(s.cat_comp)
         s.tags.setCompleter(s.tag_comp)
+        for c in (s.cat_comp, s.tag_comp):
+            style_popup(c)
         s.timer = QTimer(singleShot=True, interval=300)  # wait for a pause in typing before searching
         s.timer.timeout.connect(s.search_cats)
         s.cat.textEdited.connect(lambda _: s.timer.start())
