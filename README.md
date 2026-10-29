@@ -3,6 +3,10 @@
 
 *For Arch Linux with KDE Plasma. MultiTag updates your stream title, category and tags on Twitch, Kick and YouTube from one window.*
 
+<img width="666" height="398" alt="image" src="https://github.com/user-attachments/assets/266b50c1-4ef3-4795-a860-ee88c9634ac4" />
+
+
+
 ## 1. What you need
 
 - Arch Linux (or another distro with Python 3 and Qt 6)
