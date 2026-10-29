@@ -11,7 +11,7 @@ from PyQt6.QtGui import QIcon, QPalette
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QCompleter, QDialog, QDialogButtonBox, QFormLayout, QFrame,
                              QHBoxLayout, QLineEdit, QListView, QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
-VERSION = "1.4.4"  # bump this whenever you publish a new multitag.py
+VERSION = "1.4.5"  # bump this whenever you publish a new multitag.py
 OLD_CFG = os.path.expanduser("~/.config/streamsync")  # pre-rename config, moved over once
 UPDATE_URL = "https://raw.githubusercontent.com/7JEO/MultiTag/refs/heads/main/multitag.py"
 CFG = os.path.expanduser("~/.config/multitag")
@@ -204,7 +204,7 @@ def youtube(cfg, tok, title, cat, tags):  # YouTube's API has no "game" category
     vid = None
     for st in ("active", "upcoming"):
         items = chk(requests.get(B + "/liveBroadcasts", headers=H, timeout=20,
-                                 params=dict(part="id", mine="true", broadcastStatus=st))).get("items", [])
+                                 params=dict(part="id", broadcastStatus=st))).get("items", [])
         if items:
             vid = items[0]["id"]
             break
@@ -238,7 +238,7 @@ def youtube_info(cfg, tok):
     B = "https://www.googleapis.com/youtube/v3"
     for st in ("active", "upcoming"):
         items = chk(requests.get(B + "/liveBroadcasts", headers=H, timeout=20,
-                                 params=dict(part="id", mine="true", broadcastStatus=st))).get("items", [])
+                                 params=dict(part="id", broadcastStatus=st))).get("items", [])
         if items:
             sn = chk(requests.get(B + "/videos", headers=H, params=dict(part="snippet", id=items[0]["id"]), timeout=20))["items"][0]["snippet"]
             return dict(title=sn.get("title", ""), category="", tags=sn.get("tags", []))
