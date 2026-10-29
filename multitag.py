@@ -11,9 +11,9 @@ from PyQt6.QtGui import QIcon, QPalette
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QCompleter, QDialog, QDialogButtonBox, QFormLayout, QFrame,
                              QHBoxLayout, QLineEdit, QListView, QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
-VERSION = "1.4.3"  # bump this whenever you publish a new multitag.py
+VERSION = "1.4.4"  # bump this whenever you publish a new multitag.py
 OLD_CFG = os.path.expanduser("~/.config/streamsync")  # pre-rename config, moved over once
-UPDATE_URL = "https://raw.githubusercontent.com/7JEO/MultiTag/refs/heads/main/multitag.py"  # default; Settings > Update Url overrides it
+UPDATE_URL = "https://raw.githubusercontent.com/7JEO/MultiTag/refs/heads/main/multitag.py"
 CFG = os.path.expanduser("~/.config/multitag")
 if os.path.isdir(OLD_CFG) and not os.path.exists(CFG):
     shutil.move(OLD_CFG, CFG)
@@ -313,7 +313,7 @@ class TagCompleter(QCompleter):
 
 
 class Settings(QDialog):
-    KEYS = ["twitch_id", "kick_id", "kick_secret", "youtube_id", "youtube_secret", "update_url"]
+    KEYS = ["twitch_id", "kick_id", "kick_secret", "youtube_id", "youtube_secret"]
 
     def __init__(s, parent):
         super().__init__(parent)
@@ -440,7 +440,7 @@ class Win(QWidget):
             s.title.setText(d["title"]); s.cat.setText(d["category"]); s.tags.setText(tags)
 
     def check(s):
-        url = load(CFG_F).get("update_url") or UPDATE_URL
+        url = UPDATE_URL
         if url:
             try:
                 src = fetch_update(url)
