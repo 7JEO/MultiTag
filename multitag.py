@@ -11,7 +11,7 @@ from PyQt6.QtGui import QIcon, QPalette
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QCompleter, QDialog, QDialogButtonBox, QFormLayout, QFrame,
                              QHBoxLayout, QLineEdit, QListView, QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
-VERSION = "1.4.5"  # bump this whenever you publish a new multitag.py
+VERSION = "1.4.6"  # bump this whenever you publish a new multitag.py
 OLD_CFG = os.path.expanduser("~/.config/streamsync")  # pre-rename config, moved over once
 UPDATE_URL = "https://raw.githubusercontent.com/7JEO/MultiTag/refs/heads/main/multitag.py"
 CFG = os.path.expanduser("~/.config/multitag")
@@ -152,10 +152,12 @@ def login_twitch(cfg, log):  # device-code flow: no client secret needed (app mu
     raise RuntimeError("login timed out")
 
 
-def get_token(name, cfg, log, login=True):  # login=False: return None instead of opening a browser
+def get_token(name, cfg, log, login=True, force=False):  # login=False: return None instead of opening a browser
     with LOCK:
         T = load(TOK_F)
         t = T.get(name)
+        if t and force:
+            t["expires_at"] = 0  # the platform said 401: skip the clock, go straight to refresh/login
         if t and t["expires_at"] < time.time():
             try:
                 t2 = token_req(name, cfg, grant_type="refresh_token", refresh_token=t["refresh_token"])
@@ -164,12 +166,31 @@ def get_token(name, cfg, log, login=True):  # login=False: return None instead o
             except Exception:
                 t = None
         if not t and not login:
+            T.pop(name, None)  # drop a dead token so the next Apply logs in cleanly
+            save(TOK_F, T)
             return None
         if not t:
             t = login_twitch(cfg, log) if name == "twitch" else login_pkce(name, cfg)
         T[name] = t
         save(TOK_F, T)
         return t["access_token"]
+
+
+def call_api(name, cfg, log, fn, login=True):
+    """fn(token) with a valid token; on HTTP 401 refresh (or log in again) and retry once.
+    Returns None if login=False and there is no usable login."""
+    tok = get_token(name, cfg, log, login)
+    if not tok:
+        return None
+    try:
+        return fn(tok)
+    except RuntimeError as e:
+        if "HTTP 401" not in str(e):
+            raise
+        tok = get_token(name, cfg, log, login, force=True)
+        if not tok:
+            raise RuntimeError("login expired; press Apply to log in again")
+        return fn(tok)
 
 
 # ---------- platforms ----------
@@ -422,11 +443,11 @@ class Win(QWidget):
             if not cfg.get(n + "_id"):
                 continue
             try:
-                tok = get_token(n, cfg, s.sig.emit, login=False)
-                if not tok:
+                d = call_api(n, cfg, s.sig.emit, lambda tok, fn=fn: fn(cfg, tok), login=False)
+                if d is None:
                     s.sig.emit(f"{n}: not logged in yet. Press Apply once to log in.")
                     continue
-                s.cur.emit(n, fn(cfg, tok))
+                s.cur.emit(n, d)
             except Exception as e:
                 s.sig.emit(f"ERR {n} (reading current info): {e}")
 
@@ -468,7 +489,7 @@ class Win(QWidget):
         try:
             if not cfg.get(n + "_id"):
                 raise RuntimeError("set credentials in Settings first")
-            FUNCS[n](cfg, get_token(n, cfg, s.sig.emit), title, cat, tags)
+            call_api(n, cfg, s.sig.emit, lambda tok: FUNCS[n](cfg, tok, title, cat, tags))
             s.sig.emit(f"OK  {n} updated")
             remember(cat if n != "youtube" else "", tags)
             s.hist.emit()
